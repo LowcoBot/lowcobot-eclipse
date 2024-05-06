@@ -1,0 +1,56 @@
+[%
+	var homepage = chatbot.webpages.selectFirst(t | t.initial);
+	var homepageUrl = chatbot.frontendUrl + homepage.url;
+	var endpoints = chatbot.endpoints;
+	var intents = chatbot.intents;
+%]
+from langchain.agents import tool
+
+@tool
+def getSummary() -> str:
+	"""Returns a summary for the description, contents, and actions of [%=chatbot.name%].
+	   Useful to answer:
+	   - 'What is [%=chatbot.name%]?'
+	   - 'What is this for?'
+	   - 'What is this?'
+	   - ...
+	   
+	   or if the user simply says 'Hello' -- greet them back as well."""
+	
+	return """Some information about [%=chatbot.name%]:
+		Name
+		-----
+		[[%=chatbot.name%]]([%=homepageUrl%])
+		-----
+		
+		Goal
+		-----
+		[%=chatbot.description%]
+		-----
+		
+		Pages
+		-----
+		(no pages)
+		-----
+		
+		What can you do in [%=chatbot.name%]? (VERY RELEVANT if they ask for "What can I do")
+		-----
+		[%
+		  var grouped = endpoints.mapBy(e | e.manages.name);
+		  var verbs = Map { 
+		  	HttpMethod#GET = "retrieve them",
+		  	HttpMethod#POST = "create them",
+		  	HttpMethod#PUT = "modify them",
+		  	HttpMethod#PATCH = "patch them",
+		  	HttpMethod#DELETE = "delete them"
+		  };
+		  for (key in grouped.keySet()) {
+		  	var val = grouped.get(key); %]
+			- [%=key%]: you can [%= val.collect(e | verbs.get(e.method)).asSet().concat(", ")%].
+		  [%} for (i in intents) {%]
+			- [%=i.name%]  [%=i.description.isEmpty ? "" : "(" + i.description + ")"%]
+		[% } %]
+		-----
+		
+		When answering, include the '[[%=chatbot.name%]]([%=homepageUrl%])' link.
+	"""

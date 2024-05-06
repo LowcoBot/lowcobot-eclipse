@@ -1,0 +1,66 @@
+operation Webpage key(): String {
+	return "Page_" + self.title;
+}
+
+operation AbstractComponent key(): String {
+	return "Component_" + self.id;
+}
+
+operation Endpoint key(): String {
+	return "Endpoint_" + self.url;
+}
+
+operation LinguisticConcept key(): String {
+	return "Metaclass_" + self.name;
+}
+
+operation Any small() : String {
+    if (self.isKindOf(Webpage)) {
+        var res = "";
+        res += "Can use it to get to the [" + self.title + "](" + chatbot.frontendUrl + self.url + ") page.";
+        if (self.initial) {
+        	res += " It is the main page.";
+        }
+        return res;
+    }
+    if (self.isKindOf(AbstractComponent)) {
+    	if (self.isKindOf(low!PlacedComponent)) {
+    		return "There is " + self.referenced.name + ", which is placed on " + self.where;
+        }
+        return "There is " + self.name;
+    }
+    if (self.isKindOf(Endpoint)) {
+        return "This component uses the " + self.name + " endpoint, which " + self.method.name + "s to " + self.url + ".";
+    }
+    if (self.isKindOf(LinguisticConcept)) {
+        return "This endpoint manages " + self.name;
+    }
+    assert(false, "Failed at processing " + self + "'s name");
+}
+
+operation Any names(): String {
+    return self.collect(p|'"' + p.key() + '"').concat(", ");
+}
+
+operation Any recdomInner(padding: Integer): String {
+	if (not self.isKindOf(low!WebEntity)) {
+		return "";
+	}
+	
+	var pre = "        ";
+	var tabs = "".pad(padding*2, " ", false).println();
+	var sep = pre + tabs;
+	var inside = self.innerComponents.collect(t | t.recdomInner(padding + 1)).concat("");
+	var col = inside.isEmpty() ? "" else ":";
+	return sep + "- " + self.pseudoName() + col +  "\n" + inside;
+}
+
+operation low!WebEntity pseudoName() : String {
+	if (self.isKindOf(low!Webpage)) {
+		return "[" + self.title + "](http://localhost:3000/" + self.url + ")";
+	}
+	if (self.isKindOf(low!PlacedComponent)) {
+		return self.referenced.name + " (on " + self.where + ")";
+	}
+	return self.name;
+}

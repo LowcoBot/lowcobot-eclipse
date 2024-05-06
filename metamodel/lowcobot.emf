@@ -1,0 +1,73 @@
+@namespace(uri="lowcobot", prefix="")
+package lowcobot;
+
+class Chatbot {
+	id attr String[1] name;
+	attr String[1] description;
+	attr String[1] apiUrl;
+	attr String[1] frontendUrl;
+	
+	val Webpage[*] webpages;
+	val AbstractComponent[*] components;
+	val Endpoint[*] endpoints;
+	val LinguisticConcept[*] concepts;
+	val Task[*] intents;
+}
+
+abstract class WebEntity {
+	ref Webpage[*] linkedPages;
+	ref AbstractComponent[*] innerComponents;
+}
+ 
+class Webpage extends WebEntity {
+	id attr String[1] title;
+	attr String[1] url;
+	attr boolean initial = false;
+}
+
+abstract class AbstractComponent extends WebEntity {
+	id attr String ~id;
+	attr String name; 
+	ref Endpoint[*] consumes;
+}
+
+class PlacedComponent extends AbstractComponent {
+	ref Component[1] referenced;
+	attr String where;
+}
+
+class Component extends AbstractComponent {
+	attr String description;
+}
+
+class Endpoint extends Task {
+	attr String[1] url;
+	attr HttpMethod method;
+	ref LinguisticConcept[1] manages;
+}
+
+enum HttpMethod {
+	GET;
+	POST;
+	PUT;
+	PATCH;
+	DELETE;
+}
+
+class LinguisticConcept {
+	attr String name;
+}
+
+abstract class Task {
+	attr String[1] name;
+	attr String description;
+	val Parameter[*] parameters;
+}
+
+class Intent extends Task {
+	
+}
+
+class Parameter {
+	attr String[1] name;	
+}

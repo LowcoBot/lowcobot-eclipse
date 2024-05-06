@@ -1,0 +1,14 @@
+from pyvis.network import Network
+# Create a Pyvis Network instance
+net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
+
+# Add nodes and edges
+node_colors = {"pages": "skyblue", "components": "lightgreen", "endpoints": "salmon", "metaclasses": "lightcoral"}
+for node, attrs in G.nodes(data=True):
+    net.add_node(node, label=node, color=node_colors[attrs["type"]])
+
+for edge in G.edges():
+    net.add_edge(edge[0], edge[1], color="#999999")
+
+# Show the interactive graph
+net.show("graph.html",  notebook=False)

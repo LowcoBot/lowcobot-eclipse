@@ -1,0 +1,58 @@
+<?nsuri lowcobot?>
+<Chatbot
+    name="Dandelion+"
+    apiurl="http://localhost:3002/emc"
+    frontendurl="http://www.example.dandelion.com:3000"
+    description="Dandelion+ is a (meta-)low-code platform aimed at developing applications based on domain-specific languages (DSLs). Users develop their metamodels (the data structure), models (the data), and create workflows to articulate them into applications."
+>
+    <!-- Webpages -->
+    <Webpage title="Homepage"      url="/"          innerComponents="nb-l, mmc, mc" initial="true" />
+    <Webpage title="Projects"      url="/projects"  innerComponents="nb-l, mmc" />
+    <Webpage title="Models"        url="/models"    innerComponents="nb-l, mc" />
+    <Webpage title="Actions"       url="/actions"   innerComponents="nb-l, ac" />
+    <Webpage title="Configuration" url="/config"    innerComponents="nb-l, cc" />
+
+    <!-- Components -->
+    <Component id="nb"  name="Navigation bar" />
+    <Component id="mmc" name="See Metamodels"     consumes="GetMetamodels" />
+    <Component id="mc"  name="See Models"         consumes="GetModels, GetMetamodels" />
+    <Component id="ac"  name="Manage actions"     consumes="GetWorkflows, CreateWorkflows" />
+    <Component id="cc"  name="Configuration tabs" innerComponents="cc1, cc2" />
+    <Component id="rc"  name="Manage roles"       consumes="GetRoles" />
+    <Component id="uc"  name="Manage users"       consumes="GetUsers" />
+
+    <!-- Placed components -->
+    <PlacedComponent id="nb-l" referenced="nb" where="left side of the page" />
+    <PlacedComponent id="cc1"  referenced="rc" where="the first tab called 'Roles'" />
+    <PlacedComponent id="cc2"  referenced="uc" where="the second tab called 'Users'" />
+
+    <!-- API endpoints -->
+    <Endpoint m="GET"  name="GetPlatforms"    url="/platforms"                          manages="Platform" />
+    <Endpoint m="GET"  name="GetPlatform"     url="/platforms/{platformId}"             manages="Platform" />
+
+    <Endpoint m="GET"  name="GetMetamodels"   url="/platforms/{platformId}/metamodels"  manages="Metamodel" />
+    <Endpoint m="GET"  name="GetModels"       url="/platforms/{platformId}/models"      manages="Model" />
+    <Endpoint m="GET"  name="GetWorkflows"    url="/platforms/{platformId}/workflows"   manages="Workflow" />
+    <Endpoint m="POST" name="CreateWorkflows" url="/platforms/{platformId}/workflows"   manages="Workflow" />
+    <Endpoint m="GET"  name="GetRoles"        url="/platforms/{platformId}/roles"       manages="Role" />
+    <Endpoint m="GET"  name="GetUsers"        url="/platforms/{platformId}/users"       manages="User" />
+
+    <!-- Linguistic metaclasses -->
+    <Concept name="Platform" />
+    <Concept name="Metamodel" />
+    <Concept name="Model" />
+    <Concept name="Workflow" />
+    <Concept name="Role" />
+    <Concept name="User" />
+
+	<!-- Intents -->
+    <Intent name="Send an email" description="Sends an email to the specified address and body">
+        <Parameter name="To" />
+        <Parameter name="Body" />
+    </Intent>
+    
+    <Intent name="Report a bug" description="If you encounter a bug while using the platform, you can report a bug.">
+        <Parameter name="Summary" />
+        <Parameter name="Description" />
+    </Intent>
+</Chatbot>

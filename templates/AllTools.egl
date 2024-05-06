@@ -1,0 +1,6 @@
+from .capabilities import getCrudEntity
+from .intents import allIntents
+from .navigation import getNavigation
+from .summary import getSummary
+
+allTools = [getSummary, getNavigation, getCrudEntity, *allIntents]

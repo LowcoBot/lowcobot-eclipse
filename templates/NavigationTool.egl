@@ -1,0 +1,113 @@
+[%
+import "shared.eol";
+var pages = chatbot.webpages;
+var components = chatbot.components;
+var endpoints = chatbot.endpoints;
+var metaclasses = chatbot.concepts;
+
+var everything = pages.includingAll(components).includingAll(endpoints).includingAll(metaclasses);
+%]
+from difflib import get_close_matches
+
+import networkx as nx
+from langchain.agents import tool
+
+@tool
+def getNavigation(target: str) -> str:
+    """
+    Tells how to get from the main page to a certain target.
+    
+    ***IMPORTANT***: Invoke first the summary to know which one is the user asking about.
+
+    The available targets are: [%=everything.collect(e|e.key()).concat(", ")%]
+    
+    Use this tool to answer questions like: "How can I get to [%=pages.at(1).key()%]?" by invoking the tool with [%=pages.at(1).key()%] as the target.
+    """
+    G = nx.Graph()
+    
+    # Nodes
+    pages = [[%=pages.names()%]]
+    components = [[%=components.names()%]]
+    endpoints = [[%=endpoints.names()%]]
+    metaclasses = [[%=metaclasses.names()%]]
+    
+    everything = [ *pages, *components, *endpoints, *metaclasses ]
+    if target not in everything:
+        closests = get_close_matches(target, everything)
+        return f"Target not found. Did you mean any of: {closests}?"
+    
+    [% for (t in Sequence {"pages", "components", "endpoints", "metaclasses"})  {%]
+    for x in [%=t%]:
+        G.add_node(x, type="[%=t%]")
+    [% } %]
+    
+    # Edges
+    [% var edges = Sequence {};
+    
+    // WebEntity
+    for (i in everything.select(t | t.isKindOf(low!WebEntity))) {
+        for (j in i.linkedPages) {
+            edges.add(Tuple{from=i, to=j});
+        }
+        for (j in i.innerComponents) {
+            edges.add(Tuple{from=i, to=j});
+        }
+    }
+    
+    // AbstractComponent
+    for (i in components) {
+        for (j in i.consumes) {
+            edges.add(Tuple{from=i, to=j});
+        }
+    }
+    
+    // AbstractComponent
+    for (i in everything.select(t | t.isKindOf(low!PlacedComponent))) {
+        for (j in i.referenced) {
+            edges.add(Tuple{from=i, to=j});
+        }
+    }
+    
+    // LinguisticConcept
+    for (i in endpoints) {
+        edges.add(Tuple{from=i, to=i.manages});
+    }
+    %]
+    
+    edges = [
+        [% for (i in edges) {-%]
+            ("[%=i.from.key()%]", "[%=i.to.key()%]"),
+        [% } %]
+    ]
+    
+    for (a, b) in edges:
+        G.add_edge(a, b)
+        
+    descriptions = {
+    	[% for (obj in everything) {%]
+    		"[%=obj.key()%]": "[%=obj.small()%]",
+    	[% } %]
+    }
+    
+    # Tell one shortest path from the main page to the target
+    shortest_path = nx.shortest_path(G, "Page_Homepage", target)
+
+    # Describe it
+    description = "To get to " + target + " from the main page, do:\n"
+    for part in shortest_path[1:]:
+        if "Endpoint_" in part: pass
+        description += "\t-" + descriptions[part] + "\n"
+        
+    description += """\n\nIMPORTANT: 
+    - NEVER mention the word 'component'. NEVER. Just talk about interfaces, page segments, you can "click on", etc.
+    - Do NOT mention CRUD. Just say you can 'manage', 'modify', etc.
+    - The most important think is to include ALL the links in markdown, so like this "[Google](https://www.google.com/)".
+    - Avoid "There is".
+    - If there are few steps, write them down (do not use bullet points). Otherwise numerate them like this:
+    1. ...
+    2. ...
+    3. ...
+      etc
+    """
+    return description
+

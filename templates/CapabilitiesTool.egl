@@ -1,0 +1,123 @@
+[%
+import "shared.eol";
+var metaclasses = chatbot.concepts;
+var endpoints = chatbot.endpoints;
+var pages = chatbot.webpages;
+var metaclasses_names = metaclasses.collect(m | '"' + m.name + '"').concat(", ");
+%]
+from langchain.agents import tool
+from difflib import get_close_matches
+
+@tool
+def getCrudEntity(verb: str, entity_name: str) -> str:
+    """ 
+    Answers if you CAN perform an operation over an entity. For example:
+    - "Can I instantiate platforms?", which becomes {"verb": "instantiate", "entity_name": "Platform"}
+    - "Can I erase users?", which becomes {"verb": "erase", "entity_name": "User"}
+	
+	You MUST provide a 'verb' and you MUST provide an 'entity_name'. 
+	
+    - For *verb* use one of: generate, produce, instantiate, create, build, construct, make, get, read, retrieve, fetch, list, show, see, update, modify, change, alter, edit, delete, erase, remove, destroy, eliminate, kill.
+    - For *entity_name*, use one of: [[%=metaclasses_names%]]. 
+    """
+
+    allVerbs = ['generate', 'produce', 'instantiate', 'create', 'build', 'construct', 'make', 'get', 'read', 'retrieve', 'fetch', 'list', 'show', 'see', 'update', 'modify', 'change', 'alter', 'edit', 'delete', 'erase', 'remove', 'destroy', 'eliminate', 'kill']
+    
+    allEntities = [[%=metaclasses_names%]]
+
+
+    error = ""
+    if verb not in allVerbs:
+        closests = get_close_matches(verb, allVerbs)
+        if len(closests) == 0:
+            error += f"Verb '{verb}' not recognized. Please call the getCrudEntity tool again with one of these verbs: {allVerbs}"
+        else:
+            error += f"Verb '{verb}' not recognized. Please call the getCrudEntity tool again with one of these verbs: {closests}?"
+
+    if entity_name not in allEntities:
+        closests = get_close_matches(entity_name, allEntities)
+        if len(closests) == 0:
+            error += f"\nEntity '{entity_name}' not recognized. Please call the getCrudEntity tool again with one of these entity_name: {allEntities}"
+        else:
+            error += f"\nEntity '{entity_name}' not recognized. Please call the getCrudEntity tool again with one of these entity_name: {closests}?"
+
+    if error:
+        return error
+    
+    C_verbs = ['generate', 'produce', 'instantiate', 'create', 'build', 'construct', 'make']
+    R_verbs = ['get', 'read', 'retrieve', 'fetch', 'list', 'show', 'see']
+    U_verbs = ['update', 'modify', 'change', 'alter', 'edit']
+    D_verbs = ['delete', 'erase', 'remove', 'destroy', 'eliminate', 'kill']
+
+    verb_original = verb
+    if verb in C_verbs:
+        verb = 'POST'
+    elif verb in R_verbs:
+        verb = 'GET'
+    elif verb in U_verbs:
+        verb = 'PUT'
+    elif verb in D_verbs:
+        verb = 'DELETE'
+
+	
+    endpoints = [
+    [%
+       var map = getEndpointsToWebpagesMap();
+       for (e in chatbot.endpoints) {%]
+		("[%=e.method.name%]", "[%=e.manages.name%]", "[%=chatbot.apiUrl + e.url%]", [ [%=map.get(e).collect(p | '"' + p + '"').concat(", ")%] ] ), 
+	[% } %]
+    ]
+
+    nicer_verbs = {
+        "GET": "retrieve",
+        "POST": "create",
+        "PUT": "modify",
+        "PATCH": "patch",
+        "DELETE": "delete",
+    }
+
+    # If the endpoint is found, tell where can they make use of them
+    for endpoint in endpoints:
+        [e_verb, e_name, _, e_pages] = endpoint
+        if e_verb == verb and e_name == entity_name:
+            if len(e_pages) == 0:
+                return f"Yes, you can {verb_original} {entity_name}, but only through chat. Tell this to the user, and ASK THEM IF THEY WANT TO {verb_original} {entity_name} NOW.  ALWAYS INCLUDE LINKS IN YOUR ANSWERS!!!"
+            else:
+                return f"Yes, you can {verb_original} {entity_name}. Tell the user they can do it at the following pages: {', '.join(e_pages)}. Tell this to the user, and ASK THEM IF THEY WANT TO {verb_original} {entity_name} NOW. ALWAYS INCLUDE LINKS IN YOUR ANSWERS!!!"
+
+    # If (verb, entity) is not found, at least tell what they can do with the entity
+    entities_texts = []
+    for endpoint in endpoints:
+        [e_verb, e_name, _, e_pages] = endpoint
+        if e_name == entity_name:
+            if len(e_pages) == 0:
+                entities_texts.append(f"{nicer_verbs[e_verb]} them only through chat")
+            else:
+                entities_texts.append(f"{nicer_verbs[e_verb]} them at {', '.join(e_pages)}")
+
+    if len(entities_texts) == 0:
+        return f"You CANNOT do anything with {entity_name} in the system. We are sorry."
+    else:
+        return f"You CANNOT {verb_original} {entity_name}, HOWEVER you can do the following: {'; '.join(entities_texts)}. Tell this to the user, and ASK THEM IF THEY WANT TO DO ANY OF THOSE NOW. ALWAYS INCLUDE LINKS IN YOUR ANSWERS!!!"
+        
+[% operation getEndpointsToWebpagesMap() : Map<Endpoint, String> {
+	var res = Map { };
+	for (e in endpoints) {
+		res.put(e, Set { } );
+	}
+	
+	for (p in pages) {
+		var closure = p.closure(it | it.innerComponents).collect(c | c.consumes).flatten();
+		for (c in closure) {
+			res.get(c).add(p);
+		}
+	}
+	
+	for (k in res.keySet()){
+		var val = res
+		.get(k)
+		.collect(e | "[" +  e.title + "](" + chatbot.frontendUrl +  e.url + ")").sortBy(e | e);
+		res.put(k, val);
+	}
+	return res;
+}%]

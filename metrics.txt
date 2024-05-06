@@ -1,0 +1,28 @@
+%%%%%% STATS %%%%%%
+\newcommand{\modelTotal}{58}
+\newcommand{\modelEmpty}{7}
+\newcommand{\modelFull}{51}
+
+\newcommand{\numChatbots}{1}
+\newcommand{\numWebpages}{5}
+\newcommand{\numComponents}{7}
+\newcommand{\numPlacedComponents}{3}
+\newcommand{\numEndpoints}{8}
+\newcommand{\numConcepts}{6}
+\newcommand{\numIntents}{2}
+\newcommand{\numParameters}{4}
+\newcommand{\numAllComponents}{10}
+\newcommand{\numAllEntities}{36}
+
+\newcommand{\numPythonFiles}{6}
+\newcommand{\numDefs}{17}
+\newcommand{\numTools}{14}
+\newcommand{\numFiles}{7}
+
+\newcommand{\pythonTotal}{694}
+\newcommand{\pythonComment}{18}
+\newcommand{\pythonEmpty}{124}
+\newcommand{\pythonFull}{552}
+
+\newcommand{\throughput}{10$\times$}
+%%%%%% END STATS %%%%%%

@@ -1,0 +1,116 @@
+[%
+var intentsLike = chatbot.intents.includingAll(chatbot.endpoints);
+%]
+from langchain.agents import tool
+import requests
+
+
+[%
+var idx = 1;
+ for (i in intentsLike) {%]
+@tool
+def intent_[%=idx%]([% for (p in i.getParameters()) { %][%=p.name%]: str, [% }%]) -> str:
+    """
+    [%=i.name%] tool, with "action" name "intent_[%=idx%]". 
+    [% if(i.getParameters().isEmpty) { %]
+    This tool has no mandatory parameters, you can call it straight ahead.
+    [% } else {%]
+    Mandatory parameters:
+    [%for (p in i.getParameters()) {-%]
+        - '[%=p.name%]', a MANDATORY string
+    [% } %]
+    
+    ALWAYS CALL "prepare_intent" BEFORE ME!!!!!!!!
+    [% } %]
+    
+        
+    """
+    [% if (i.isKindOf(Endpoint)) {%]
+    [% var e = i;%]
+    print("Executing [%=e.name%]")
+    
+    try:
+        url = f"[%=chatbot.apiUrl + e.url%]"
+        method = "[%=e.method%]"
+        resp = requests.request(method, url)
+        if resp.ok:
+            if 'application/json' in resp.headers.get('Content-Type', ''):
+                data = resp.json()
+                return data
+            else:
+                data = resp.text
+                return data
+        else:
+            return "***The [%=e.method%] request at `[%=e.url%]` failed with status code " + str(resp.status_code) + "***\n"
+    except BaseException as e:
+        return "***The [%=e.method%] request at `[%=e.url%]` failed for this reason: ->" + str(e) + "<-. Tell the user something failed and that therefore you cannot answer.***"
+    
+    [% } else { %]
+    [%=out.startPreserve("#", "", "intent_" + idx, true)%]
+    # Replace with your implementation
+    return "Sorry, [%=i.name%] is not functional yet"
+    [%=out.stopPreserve()%]
+    [% } %]
+
+[% idx += 1; } %]
+
+justIntents = [
+    [%idx = 1;  for (i in intentsLike) {%]
+    intent_[%=idx%],
+    [% idx+=1; }%]
+]
+
+intentDescriptions = {
+    [%idx = 1;  for (i in intentsLike) {%]
+    "intent_[%=idx%]": [%=i.description.isDefined() ? '"' + i.description + '"' else "None" %],
+    [% idx+=1; }%]
+}
+
+
+@tool
+def prepare_intent(intent_id: str) -> str:
+    """Prepares intents before being run"""
+    matching_intent = filter(lambda i: i.name == intent_id, justIntents)
+    matching_intent = list(matching_intent)[0]
+    if not matching_intent:
+        return "Intent not found"
+    fields = matching_intent.args_schema.__fields__.keys()
+    description = intentDescriptions[intent_id]
+    res = f"Okay, detecting that the user wants to perform {matching_intent.name}. For that, ask the user the relevant information using this: \n-{description}\n-You must include ask for this LITERALLY in your answer:"
+    for f in fields:
+        res += "@@" + f + "@@, "
+    res += "\n. You MUST respect the @@...@@s. Okay, now proceed telling the user with \"action\": \"Final Answer\"."
+    return res
+
+allIntents = [ *justIntents, prepare_intent ]
+
+[%
+    operation Task getParameters(): Collection(Parameter) {
+        var res = self.parameters;
+        if (self.isKindOf(Endpoint)) {
+            var parts = self.url.pathParts();
+            for (p in parts) {
+                var param : new Parameter;
+                param.name = p;
+                res.add(param);
+            }
+        }
+        return res;
+    }
+    
+    operation String pathParts(): Sequence(String) {
+        var split = self.split("/");
+        var res = Sequence {};
+        for (s in split) {
+            if (s.startsWith("{") and s.endsWith("}")) {
+                var trimmed = s.substring(1, s.length() - 1);
+                res.add(trimmed);
+            }
+        }
+        return res;
+    }
+    operation String getAttributes(): String {
+        var pathParts = self.pathParts();
+        return pathParts.collect(p | p + ": str").concat(",");
+    }
+%]

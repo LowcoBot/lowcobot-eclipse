@@ -1,0 +1,59 @@
+
+pre {	
+	var templates = "templates/";
+	var output = "output/";
+	
+	assert(lowcobot.isDefined(), "Model `lowcobot` is missing in the EGX script. It should conform to the `lowcobot.emf` metamodel.");
+	
+	var chatbots = lowcobot!Chatbot.all;
+	assert(chatbots.size >= 1, "There are no Chatbots defined in " + lowcobot.getResource.uri);
+	assert(chatbots.size == 1, "There are too many Chatbots at " + lowcobot.getResource.uri + ". There must be exactly one.");
+	var chatbot = chatbots.first;
+}
+
+rule SummaryTool {
+	parameters: Map {
+		"chatbot" = chatbot
+	}
+	template: templates + "SummaryTool.egl"
+	target: output + "summary.py"
+}
+
+rule NavigationTool {
+	parameters: Map {
+		"low" = lowcobot,
+		"chatbot" = chatbot
+	}
+	template: templates + "NavigationTool.egl"
+	target: output + "navigation.py"
+}
+
+rule CrudEntityTool {
+	parameters: Map {
+		"low" = lowcobot,
+		"chatbot" = chatbot
+	}
+	template: templates + "CapabilitiesTool.egl"
+	target: output + "capabilities.py"
+}
+
+rule Prompt {
+	parameters: Map {
+		"chatbot" = chatbot
+	}
+	template: templates + "Prompt.egl"
+	target: output + "prompt.py"
+}
+
+rule IntentTools {
+	parameters: Map {
+		"chatbot" = chatbot
+	}
+	template: templates + "IntentTools.egl"
+	target: output + "intents.py"
+}
+
+rule AllTools {
+	template: templates + "AllTools.egl"
+	target: output + "allTools.py"
+}
